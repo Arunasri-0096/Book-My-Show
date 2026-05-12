@@ -82,6 +82,21 @@ pipeline {
             }
         }
 
+        stage('Deploy to Container') {
+            steps {
+                sh '''
+                docker stop bms || true
+                docker rm bms || true
+
+                docker run -d --restart=always --name bms -p 3000:3000 bindusravya/bms:latest
+
+                docker ps -a
+                sleep 5
+                docker logs bms
+                '''
+            }
+        }
+
         stage('Deploy to EKS Cluster') {
             steps {
                 script {
@@ -109,7 +124,6 @@ pipeline {
                 }
             }
         }
-
     }
 
     post {
