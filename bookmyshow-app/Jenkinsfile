@@ -7,6 +7,7 @@ pipeline {
     }
 
     environment {
+        SCANNER_HOME = tool 'sonar-scanner'
         DOCKER_IMAGE = 'bindusravya/bms:latest'
         EKS_CLUSTER_NAME = 'kastro-eks'
         AWS_REGION = 'us-east-1'
@@ -28,15 +29,12 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    def SCANNER_HOME = tool 'sonar-scanner'
-                    withSonarQubeEnv('sonar-server') {
-                        sh """
-                        ${SCANNER_HOME}/bin/sonar-scanner \
-                            -Dsonar.projectName=BMS \
-                            -Dsonar.projectKey=BMS
-                        """
-                    }
+                withSonarQubeEnv('sonar-server') {
+                    sh """
+                    $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=BMS \
+                        -Dsonar.projectKey=BMS
+                    """
                 }
             }
         }
@@ -86,13 +84,18 @@ pipeline {
 
         stage('Deploy to Container') {
             steps {
-                sh '''
+                sh ''' 
+                echo "Stopping and removing old container..."
                 docker stop bms || true
                 docker rm bms || true
 
-                docker run -d --restart=always --name bms -p 3000:3000 bindusravya/bms:latest
+                echo "Running new container on port 3000..."
+                docker run -d --restart=always --name bms -p 3000:3000 kastrov/bms:latest
 
+                echo "Checking running containers..."
                 docker ps -a
+
+                echo "Fetching logs..."
                 sleep 5
                 docker logs bms
                 '''
@@ -102,10 +105,8 @@ pipeline {
         stage('Deploy to EKS Cluster') {
             steps {
                 script {
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
-                        string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')
-                    ]) {
+                    withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
+                                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')]) {
 
                         sh '''
                         aws configure set aws_access_key_id $AWS_ACCESS_KEY
@@ -126,7 +127,8 @@ pipeline {
                 }
             }
         }
-    }
+
+    }   // ✅ CLOSE stages properly
 
     post {
         always {
