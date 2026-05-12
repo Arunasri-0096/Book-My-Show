@@ -84,24 +84,20 @@ pipeline {
 
         stage('Deploy to Container') {
             steps {
-                sh ''' 
-                echo "Stopping and removing old container..."
+                sh '''
                 docker stop bms || true
                 docker rm bms || true
 
-                echo "Running new container on port 3000..."
                 docker run -d --restart=always --name bms -p 3000:3000 $DOCKER_IMAGE
 
-                echo "Checking running containers..."
                 docker ps -a
-
-                echo "Fetching logs..."
                 sleep 5
                 docker logs bms
                 '''
             }
         }
 
+        // ✅ FIXED POSITION (THIS WAS OUTSIDE BEFORE)
         stage('Deploy to EKS Cluster') {
             steps {
                 script {
@@ -130,7 +126,7 @@ pipeline {
             }
         }
 
-    }   // ✅ stages CLOSED properly
+    }   // ✅ stages closed properly
 
     post {
         always {
