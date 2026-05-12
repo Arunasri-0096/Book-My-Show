@@ -82,11 +82,30 @@ pipeline {
             }
         }
 
+        stage('Deploy to Container') {
+            steps {
+                sh '''
+                echo "Stopping old container..."
+                docker stop bms || true
+                docker rm bms || true
+
+                echo "Running new container..."
+                docker run -d --restart=always --name bms -p 3000:3000 bindusravya/bms:latest
+
+                docker ps -a
+                sleep 5
+                docker logs bms
+                '''
+            }
+        }
+
         stage('Deploy to EKS Cluster') {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
-                                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')]) {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
+                        string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')
+                    ]) {
 
                         sh '''
                         aws configure set aws_access_key_id $AWS_ACCESS_KEY
@@ -118,4 +137,5 @@ pipeline {
                 attachmentsPattern: 'trivyfs.txt'
         }
     }
+}
 }
