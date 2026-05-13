@@ -85,6 +85,10 @@ pipeline {
         stage('Deploy to Container') {
             steps {
                 sh ''' 
+                echo "Freeing port 3000..."
+                docker ps -q --filter "publish=3000" | xargs -r docker stop
+                docker ps -aq --filter "publish=3000" | xargs -r docker rm
+
                 echo "Stopping and removing old container..."
                 docker stop bms || true
                 docker rm bms || true
@@ -102,32 +106,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to EKS Cluster') {
-            steps {
-                script {
-                    withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY'),
-                                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_KEY')]) {
-
-                        sh '''
-                        aws configure set aws_access_key_id $AWS_ACCESS_KEY
-                        aws configure set aws_secret_access_key $AWS_SECRET_KEY
-                        aws configure set region $AWS_REGION
-
-                        aws sts get-caller-identity
-
-                        aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
-
-                        kubectl apply -f deployment.yml
-                        kubectl apply -f service.yml
-
-                        kubectl get pods
-                        kubectl get svc
-                        '''
-                    }
-                }
-            }
-        }
-    }
+    }   // <-- THIS WAS MISSING
 
     post {
         always {
