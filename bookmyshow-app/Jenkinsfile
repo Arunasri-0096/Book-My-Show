@@ -9,7 +9,6 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         DOCKER_IMAGE = 'arunasri0096/bms:latest'
-        EKS_CLUSTER_NAME = 'kastro-eks'
         AWS_REGION = 'us-east-1'
     }
 
@@ -23,7 +22,18 @@ pipeline {
 
         stage('Checkout from Git') {
             steps {
-                git branch: 'main', url: 'https://github.com/Arunasri-0096/Book-My-Show.git'
+                git branch: 'main',
+                credentialsId: 'git-cred',
+                url: 'https://github.com/Arunasri-0096/Book-My-Show.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                rm -rf node_modules package-lock.json
+                npm install --legacy-peer-deps
+                '''
             }
         }
 
@@ -32,8 +42,8 @@ pipeline {
                 withSonarQubeEnv('sonar-server') {
                     sh """
                     $SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=BMS \
-                        -Dsonar.projectKey=BMS
+                    -Dsonar.projectName=BMS \
+                    -Dsonar.projectKey=BMS
                     """
                 }
             }
@@ -41,19 +51,8 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
-                }
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh '''
-                cd bookmyshow-app
-                rm -rf node_modules package-lock.json
-                npm install
-                '''
+                waitForQualityGate abortPipeline: false,
+                credentialsId: 'sonar-cred'
             }
         }
 
@@ -63,58 +62,55 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push') {
+        stage('Docker Build') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-                        sh '''
-                        echo "Logging into DockerHub..."
-                        echo $PASS | docker login -u $USER --password-stdin
+                sh 'docker build -t $DOCKER_IMAGE .'
+            }
+        }
 
-                        echo "Building Docker image..."
-                        docker build -t $DOCKER_IMAGE -f bookmyshow-app/Dockerfile bookmyshow-app
+        stage('Docker Login & Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
 
-                        echo "Pushing Docker image..."
-                        docker push $DOCKER_IMAGE
-                        '''
-                    }
+                    sh '''
+                    echo $PASS | docker login -u $USER --password-stdin
+                    docker push $DOCKER_IMAGE
+                    '''
                 }
             }
         }
 
-        stage('Deploy to Container') {
+        stage('Deploy Container') {
             steps {
-                sh ''' 
-                echo "Freeing port 3000..."
-                docker ps -q --filter "publish=3000" | xargs -r docker stop
-                docker ps -aq --filter "publish=3000" | xargs -r docker rm
-
-                echo "Stopping and removing old container..."
+                sh '''
                 docker stop bms || true
                 docker rm bms || true
 
-                echo "Running new container on port 3000..."
-                docker run -d --restart=always --name bms -p 3000:3000 bindusravya/bms:latest
-
-                echo "Checking running containers..."
-                docker ps -a
-
-                echo "Fetching logs..."
-                sleep 5
-                docker logs bms
+                docker run -d \
+                --name bms \
+                --restart=always \
+                -p 3000:3000 \
+                $DOCKER_IMAGE
                 '''
             }
         }
-
-    }   // <-- THIS WAS MISSING
+    }
 
     post {
         always {
             emailext attachLog: true,
-                subject: "${currentBuild.result}",
-                body: "Project: ${env.JOB_NAME}<br/>Build: ${env.BUILD_NUMBER}<br/>URL: ${env.BUILD_URL}",
-                to: 'kastrokiran@gmail.com',
-                attachmentsPattern: 'trivyfs.txt'
+            subject: "${currentBuild.result}",
+            body: """
+            Project: ${env.JOB_NAME}<br/>
+            Build: ${env.BUILD_NUMBER}<br/>
+            URL: ${env.BUILD_URL}
+            """,
+            to: 'kastrokiran@gmail.com',
+            attachmentsPattern: 'trivyfs.txt'
         }
     }
 }
