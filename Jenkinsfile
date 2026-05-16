@@ -8,12 +8,12 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/Arunasri-0096/Book-My-Show.git'
             }
         }
-
-        stage('Install Dependencies') {
+  stage('Install Dependencies') {
             steps {
                 sh 'npm install'
             }
         }
+
 
         stage('Build') {
             steps {
@@ -27,4 +27,3 @@ pipeline {
             }
         }
     }
-}
