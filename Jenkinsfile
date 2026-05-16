@@ -2,17 +2,13 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'node18.x'
+        nodejs 'node18. stage('Git Checkout') {
+   stage('Git Checkout') {
+    steps {
+        git branch: 'main',
+        url: 'https://github.com/Arunasri-0096/Book-My-Show.git'
     }
-
-    stages {
-
-        stage('Git Checkout') {
-            steps {
-                git 'https://github.com/Arunasri-0096/Book-My-Show.git'
-            }
-        }
-
+}
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
