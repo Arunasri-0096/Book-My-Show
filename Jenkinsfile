@@ -26,7 +26,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
 
                     sh '''
-                    sonar-scanner \
+                    /opt/sonar-scanner/bin/sonar-scanner \
                     -Dsonar.projectName=Book-My-Show \
                     -Dsonar.projectKey=Book-My-Show \
                     -Dsonar.sources=.
@@ -37,7 +37,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'npm run build || echo "No build step"'
+                sh 'npm run build || echo "No build step found"'
             }
         }
 
@@ -61,5 +61,4 @@ pipeline {
         }
 
     }
-
 }
