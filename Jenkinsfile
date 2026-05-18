@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "bookmyshow-app"
+        CONTAINER_NAME = "bookmyshow-container"
+    }
+
     stages {
 
         stage('Git Checkout') {
@@ -21,12 +26,21 @@ pipeline {
             }
         }
 
-        stage('Run App') {
+        stage('Docker Build') {
             steps {
-                sh 'nohup npm start &'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
-    }   // <-- closes stages
+        stage('Docker Run') {
+            steps {
+                sh '''
+                docker rm -f $CONTAINER_NAME || true
+                docker run -d --name $CONTAINER_NAME -p 3000:3000 $IMAGE_NAME
+                '''
+            }
+        }
 
-}       // <-- closes pipeline
+    }   // closes stages
+
+}       // closes pipeline
