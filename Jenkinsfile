@@ -4,7 +4,6 @@ pipeline {
     environment {
         IMAGE_NAME = "bookmyshow-app"
         CONTAINER_NAME = "bookmyshow-container"
-        SONAR_HOME = tool "SonarQubeScanner"
     }
 
     stages {
@@ -23,14 +22,14 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
+
                 withSonarQubeEnv('SonarQube') {
 
                     sh '''
-                    $SONAR_HOME/bin/sonar-scanner \
+                    sonar-scanner \
                     -Dsonar.projectName=Book-My-Show \
                     -Dsonar.projectKey=Book-My-Show \
-                    -Dsonar.sources=. \
-                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    -Dsonar.sources=.
                     '''
                 }
             }
@@ -52,11 +51,15 @@ pipeline {
             steps {
                 sh '''
                 docker rm -f $CONTAINER_NAME || true
-                docker run -d --name $CONTAINER_NAME -p 3000:3000 $IMAGE_NAME
+
+                docker run -d \
+                --name $CONTAINER_NAME \
+                -p 3000:3000 \
+                $IMAGE_NAME
                 '''
             }
         }
 
-    }   // closes stages
+    }
 
-}       // closes pipeline
+}
