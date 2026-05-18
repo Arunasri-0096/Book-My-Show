@@ -4,6 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "bookmyshow-app"
         CONTAINER_NAME = "bookmyshow-container"
+        SONAR_HOME = tool "SonarQubeScanner"
     }
 
     stages {
@@ -17,6 +18,21 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+
+                    sh '''
+                    $SONAR_HOME/bin/sonar-scanner \
+                    -Dsonar.projectName=Book-My-Show \
+                    -Dsonar.projectKey=Book-My-Show \
+                    -Dsonar.sources=. \
+                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    '''
+                }
             }
         }
 
